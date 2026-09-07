@@ -12,11 +12,25 @@ Click **Code → Codespaces → Create codespace**, or use a launch link from yo
 The sandbox boots the `aws-core` profile automatically (~1–2 min on first create), then forwards
 port **9000** — open it to reach the console.
 
-## Use it
+## Use it — smoke test S3 · RDS · EC2
 
 ```bash
-aws --endpoint-url "$CLOUDLEARN_PUBLIC_URL" s3 mb s3://demo
-aws --endpoint-url "$CLOUDLEARN_PUBLIC_URL" s3 ls
+EP="$CLOUDLEARN_PUBLIC_URL"          # or http://localhost:9000 inside the Codespace
+
+# S3
+aws --endpoint-url "$EP" s3 mb s3://demo
+aws --endpoint-url "$EP" s3 ls
+
+# RDS (create a Postgres instance, then list)
+aws --endpoint-url "$EP" rds create-db-instance \
+  --db-instance-identifier demo-db --engine postgres \
+  --db-instance-class db.t3.micro --allocated-storage 20 \
+  --master-username admin --master-user-password secret99
+aws --endpoint-url "$EP" rds describe-db-instances
+
+# EC2 (launches as a real container on the Codespace's docker-in-docker)
+aws --endpoint-url "$EP" ec2 run-instances --image-id ami-ubuntu --instance-type t3.micro
+aws --endpoint-url "$EP" ec2 describe-instances
 ```
 
 `$CLOUDLEARN_PUBLIC_URL` is the forwarded `https://<codespace>-9000.app.github.dev` address
@@ -27,10 +41,11 @@ Codespace, `http://localhost:9000` works directly.
 
 | | |
 |--|--|
-| **Profile** | `aws-core` (8 services, fully conformance-verified) |
-| **Tier** | Lite — full API/SDK conformance, no real compute (`vm:0`) |
+| **Services** | S3 · DynamoDB · SQS · SNS · IAM · KMS · Secrets Manager · RDS · **EC2** |
+| **Compute** | Real EC2 instances as sibling Docker containers (docker-in-docker) |
+| **Default tier** | Unlicensed = Free → **1 VM + 1 RDS + 1 bucket** per space (enough to smoke-test). Activate Pro for 10 VMs. |
 | **TTL** | 8 h by default — the sandbox stops itself after the window (`VYOMI_SANDBOX_TTL`) |
-| **Cost** | $0 on a personal account's free Codespaces quota; metered + shown in the Vyomi admin cost dashboard |
+| **Cost** | $0 on a personal account's free Codespaces quota; metered in the Vyomi admin cost dashboard |
 
 ## Activate a paid tier (optional)
 
