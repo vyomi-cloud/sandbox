@@ -1,0 +1,110 @@
+# Vyomi Cloud Sandbox — aws-core profile (Lite / no-compute).
+#
+# A trimmed, PULL-ONLY derivation of docker-compose.cloudlite.yml carrying ONLY
+# the backends the `aws-core` service profile needs:
+#   s3            → MinIO
+#   dynamodb      → dynamodb-local
+#   sqs           → ElasticMQ
+#   kms + secrets → Vault (dev mode)
+#   rds           → Postgres
+#   sns, iam      → in-process (no backend)
+# Everything runs inside the Codespace's docker-in-docker daemon; port 9000 is
+# forwarded to the *.app.github.dev URL. Compute (EC2) is intentionally absent
+# (Lite = vm:0). See plan wise-orbiting-alpaca.md §3.1-§3.2.
+name: vyomi-sandbox
+
+networks:
+  vyomi-net:
+    name: vyomi-net
+
+services:
+  simulator:
+    image: ${VYOMI_SIMULATOR_IMAGE:-vyomi/appliance:latest}
+    pull_policy: always
+    ports:
+      - "9000:9000"
+    networks: [vyomi-net]
+    depends_on:
+      - vyomi-sql-postgres
+    environment:
+      CLOUDLEARN_STATE_FILE: /data/cloudlearn_state.sqlite3
+      CLOUDLEARN_LICENSE_BACKEND_URL: ${VYOMI_LICENSE_BACKEND_URL:-https://vyomi.cloud}
+      # Lite / no-compute — the profile is enforced by the license + VYOMI_PROFILE.
+      VYOMI_COMPUTE_BACKEND: none
+      VYOMI_PROFILE: ${VYOMI_PROFILE:-aws-core}
+      # Developer mode → open CORS; the SPA calls /api/* relative so it works
+      # behind the Codespaces *.app.github.dev proxy unchanged.
+      CLOUDLEARN_DISTRIBUTION_MODE: developer
+      # Forwarded public URL (computed by boot.sh from $CODESPACE_NAME) — wins
+      # for GCP self-links/URIs. Empty locally → dynamic Host capture takes over.
+      CLOUDLEARN_PUBLIC_URL: ${CLOUDLEARN_PUBLIC_URL:-}
+      # Pre-seeded enterprise license (org Codespaces secret) — optional; when
+      # absent the console uses the device-flow activation.
+      VYOMI_LICENSE_JWT: ${VYOMI_LICENSE_JWT:-}
+      # Stable per-codespace install id so telemetry + cost meter share a key.
+      VYOMI_INSTALL_ID: ${CODESPACE_NAME:-vyomi-sandbox}
+      # aws-core backends
+      CLOUDLEARN_SQL_PG_HOST: vyomi-sql-postgres
+      CLOUDLEARN_SQL_PG_PORT: "5432"
+      CLOUDLEARN_SQL_PG_ADMIN_USER: postgres
+      CLOUDLEARN_SQL_PG_ADMIN_PASSWORD: cloudlearn
+      CLOUDLEARN_MINIO_URL: http://vyomi-minio:9000
+      CLOUDLEARN_MINIO_ACCESS_KEY: cloudlearn
+      CLOUDLEARN_MINIO_SECRET_KEY: cloudlearn-dev-secret-key
+      CLOUDLEARN_DYNAMODB_URL: http://vyomi-dynamodb:8000
+      CLOUDLEARN_ELASTICMQ_URL: http://vyomi-elasticmq:9324
+      CLOUDLEARN_VAULT_URL: http://vyomi-vault:8200
+      CLOUDLEARN_VAULT_TOKEN: vyomi-dev-token
+    volumes:
+      - vyomi-data:/data
+    tmpfs:
+      - /tmp:size=100M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  vyomi-sql-postgres:
+    image: postgres:16-alpine
+    networks: [vyomi-net]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: cloudlearn
+    volumes:
+      - vyomi-sql-pg:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  vyomi-minio:
+    image: minio/minio:latest
+    networks: [vyomi-net]
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: cloudlearn
+      MINIO_ROOT_PASSWORD: cloudlearn-dev-secret-key
+    volumes:
+      - vyomi-minio:/data
+    restart: unless-stopped
+
+  vyomi-dynamodb:
+    image: amazon/dynamodb-local:latest
+    networks: [vyomi-net]
+    restart: unless-stopped
+
+  vyomi-elasticmq:
+    image: softwaremill/elasticmq-native:latest
+    networks: [vyomi-net]
+    restart: unless-stopped
+
+  vyomi-vault:
+    image: hashicorp/vault:1.15
+    networks: [vyomi-net]
+    command: ["server", "-dev", "-dev-root-token-id=vyomi-dev-token", "-dev-listen-address=0.0.0.0:8200"]
+    cap_add: [IPC_LOCK]
+    restart: unless-stopped
+
+volumes:
+  vyomi-data:
+  vyomi-sql-pg:
+  vyomi-minio:

@@ -1,0 +1,13 @@
+{
+  "id": "aws-core",
+  "name": "AWS Core",
+  "description": "The battle-tested, relay-proven AWS core — the only profile shipped in the P0/P1 MVP. Every service here is fully conformance-verified with a real data plane (200+ tests). New profiles are added service-by-service as scope hardens (plan §3.2).",
+  "services": ["s3", "dynamodb", "sqs", "sns", "iam", "kms", "secretsmanager", "rds"],
+  "unlocked_categories": ["object_storage", "nosql", "queue", "iam", "kms", "secrets", "relational_db"],
+  "prewarm_backends": ["vyomi-minio", "vyomi-dynamodb", "vyomi-elasticmq", "vyomi-vault", "vyomi-sql-postgres"],
+  "compute": "none",
+  "default_compute": "S",
+  "default_ttl": "8h",
+  "substrates": ["wasm", "codespaces", "local"],
+  "note": "aws-core is WASM-realizable (Nano) AND Codespaces/Local-realizable — the shared proof-point of the unified architecture (plan §11)."
+}
