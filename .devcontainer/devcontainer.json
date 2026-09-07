@@ -1,36 +1,28 @@
 {
-  "name": "Vyomi Cloud Sandbox — aws-core",
-  "//": "P0 MVP devcontainer. Runs the Lite (no-compute) simulator with the aws-core service profile in a GitHub Codespace. See plan wise-orbiting-alpaca.md §3.1. Authored in appliance/codespace/ and published to the vyomi-cloud/sandbox template repo.",
+  "name": "Vyomi Sandbox — All Clouds (full)",
+  "//": "DEFAULT / full profile: AWS + GCP + Azure, all services + compute. Turnkey — other profiles are selectable folders (.devcontainer/aws, /gcp, /azure). See plan §3.1-§3.2.",
 
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "moby": true,
-      "version": "latest"
-    }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" }
   },
 
   "forwardPorts": [9000],
-  "portsAttributes": {
-    "9000": { "label": "Vyomi Console", "onAutoForward": "openBrowser" }
-  },
+  "portsAttributes": { "9000": { "label": "Vyomi Console", "onAutoForward": "openBrowser" } },
 
-  "//postCreate": "One-time: pull the images, start the aws-core stack, register the sandbox with the cost meter.",
   "postCreateCommand": "bash .devcontainer/boot.sh up",
-  "//postStart": "Every start: (re)arm the running-time heartbeat + the MVP-lite TTL reaper.",
   "postStartCommand": "bash .devcontainer/boot.sh heartbeat",
 
+  "containerEnv": {
+    "COMPOSE_PROFILES": "aws,gcp,azure",
+    "VYOMI_PROFILE": "all-clouds"
+  },
   "remoteEnv": {
-    "VYOMI_PROFILE": "aws-core",
     "VYOMI_SANDBOX_TTL": "8h",
     "VYOMI_LICENSE_BACKEND_URL": "https://vyomi.cloud",
     "VYOMI_BILLING": "free_personal_quota"
   },
 
-  "//hostRequirements": "Floor for the S compute profile; Codespaces picks the actual machine at creation (S=8-core/32GB, M=16-core/64GB, L=32-core/128GB).",
-  "hostRequirements": {
-    "cpus": 4,
-    "memory": "8gb",
-    "storage": "32gb"
-  }
+  "//hostRequirements": "All-clouds runs ~11 backends incl. the gcloud emulators — needs a bigger machine.",
+  "hostRequirements": { "cpus": 8, "memory": "16gb", "storage": "48gb" }
 }

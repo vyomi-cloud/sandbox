@@ -14,7 +14,8 @@ PORTAL="${VYOMI_LICENSE_BACKEND_URL:-https://vyomi.cloud}"
 CODESPACE="${CODESPACE_NAME:-vyomi-sandbox-local}"
 ORG="${GITHUB_REPOSITORY_OWNER:-}"
 GH_USER="${GITHUB_USER:-}"
-PROFILE="${VYOMI_PROFILE:-aws-core}"
+PROFILE="${VYOMI_PROFILE:-all-clouds}"
+COMPOSE_PROFILES="${COMPOSE_PROFILES:-aws,gcp,azure}"; export COMPOSE_PROFILES
 BILLING="${VYOMI_BILLING:-free_personal_quota}"
 TTL="${VYOMI_SANDBOX_TTL:-8h}"
 FWD_DOMAIN="${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
@@ -48,7 +49,7 @@ ttl_seconds() {  # 8h | 90m | 1d | 1w → seconds
 }
 
 start_stack() {
-  log "pulling + starting aws-core stack…"
+  log "pulling + starting stack (profile=$PROFILE · clouds=$COMPOSE_PROFILES)…"
   docker compose -f "$COMPOSE" up -d
   log "waiting for the simulator (http://localhost:9000/healthz)…"
   for i in $(seq 1 60); do
