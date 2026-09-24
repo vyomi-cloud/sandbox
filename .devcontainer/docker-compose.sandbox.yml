@@ -127,9 +127,11 @@ services:
   # ── AWS backends (profile: aws) ───────────────────────────────────────────
   vyomi-minio:
     profiles: ["aws"]
-    # MinIO removed the public Docker Hub image (docker.io/minio/minio → 404);
-    # their official registry is now quay.io. Overridable via VYOMI_MINIO_IMAGE.
-    image: ${VYOMI_MINIO_IMAGE:-quay.io/minio/minio:latest}
+    # MinIO's community image is no longer freely pullable — docker.io/minio/minio
+    # 404s AND quay.io/minio/minio 401s. We self-mirror it (built from source,
+    # multi-arch amd64+arm64) as vyomi/minio, same pattern as vyomi/cloudsim.
+    # Overridable via VYOMI_MINIO_IMAGE.
+    image: ${VYOMI_MINIO_IMAGE:-vyomi/minio:latest}
     networks: [vyomi-net]
     command: ["server", "/data"]
     environment:
