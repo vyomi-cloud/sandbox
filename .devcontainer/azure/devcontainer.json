@@ -2,7 +2,10 @@
   "name": "Vyomi Sandbox — Azure (full)",
   "//": "Blob · Cosmos DB · Service Bus · Key Vault · RBAC · SQL Database · Virtual Machines. Shares ../boot.sh + ../docker-compose.sandbox.yml.",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
-  "features": { "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" } },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" },
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
   "forwardPorts": [9000],
   "portsAttributes": { "9000": { "label": "Vyomi Console", "onAutoForward": "openBrowser" } },
   "postCreateCommand": "bash .devcontainer/boot.sh up",

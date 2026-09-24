@@ -4,12 +4,15 @@
 
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" },
+    "//sshd": "installs + starts openssh-server so `gh codespace ssh` works (used by the portal's server-side readiness check behind org/private port visibility).",
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
 
   "forwardPorts": [9000],
   "portsAttributes": { "9000": { "label": "Vyomi Console", "onAutoForward": "openBrowser" } },
 
+  "//postCreate": "Keep provisioning fast; boot.sh installs SDK/CLIs in the background.",
   "postCreateCommand": "bash .devcontainer/boot.sh up",
   "postStartCommand": "bash .devcontainer/boot.sh heartbeat",
 
