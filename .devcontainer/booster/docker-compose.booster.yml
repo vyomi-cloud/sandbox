@@ -1,0 +1,45 @@
+# Vyomi Booster — headless. Simulator only (compute + AI); no host ports are published.
+# Access is exclusively via the outbound relay link started by boot-booster.sh.
+name: vyomi-booster
+networks:
+  vyomi-net:
+    name: vyomi-net
+services:
+  simulator:
+    image: ${VYOMI_SIMULATOR_IMAGE:-vyomi/appliance:latest}
+    pull_policy: always
+    user: "0:0"
+    networks: [vyomi-net]
+    expose: ["9000"]
+    environment:
+      CLOUDLEARN_STATE_FILE: /data/cloudlearn_state.sqlite3
+      CLOUDLEARN_DISTRIBUTION_MODE: developer
+      VYOMI_ROLE: booster
+      VYOMI_COMPUTE_BACKEND: docker
+      VYOMI_INSTANCE_NETWORK: vyomi-net
+      VYOMI_LICENSE_JWT: ${VYOMI_LICENSE_JWT:-}
+      VYOMI_INSTALL_ID: ${CODESPACE_NAME:-vyomi-booster}
+      # Signed session token from the portal + the shared verification key: the simulator refuses everything without
+      # them, serves one cloud on Pro, and refuses all after session_end (core/booster_session.py).
+      VYOMI_BOOSTER_SESSION_TOKEN: ${VYOMI_BOOSTER_SESSION_TOKEN:-}
+      VYOMI_BOOSTER_SESSION_KEY: ${VYOMI_BOOSTER_SESSION_KEY:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - booster-data:/data
+  # Outbound-only link: dials the relay over WSS with the session token (no inbound/published port anywhere).
+  # Needs wasm/relay/{booster-dial,booster-session}.mjs + ws in the appliance image under /app/relay.
+  link:
+    image: ${VYOMI_SIMULATOR_IMAGE:-vyomi/appliance:latest}
+    profiles: ["link"]
+    networks: [vyomi-net]
+    depends_on: [simulator]
+    restart: "no"
+    working_dir: /app/relay
+    entrypoint: ["node", "/app/relay/booster-dial.mjs"]
+    environment:
+      VYOMI_RELAY_URL: ${VYOMI_RELAY_URL:-}
+      VYOMI_BOOSTER_SESSION_TOKEN: ${VYOMI_BOOSTER_SESSION_TOKEN:-}
+      VYOMI_BOOSTER_LOCAL_URL: http://simulator:9000
+      WS_PKG: /app/relay/node_modules/ws
+volumes:
+  booster-data:
