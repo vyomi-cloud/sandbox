@@ -3,7 +3,9 @@
   "//": "Pro/Max booster pack: compute + AI only, NO UI, NO forwarded port. Nano is the UI; the booster dials OUT to the relay with the signed session token. 2-core so the 40h/60h allowance fits GitHub's 120 core-hour free quota (design: docs/architecture/v4.0/BOOSTER-CODESPACES-GITHUB-APP.md).",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "version": "latest" },
+    "//sshd": "openssh-server on port 2222 so `gh codespace ssh` works and the Mesh agent's reserved `host`/`codespace` target (VYOMI_HOST_SSH_ADDR) has an sshd to reach (docs: VYOMI-TUNNEL-ARCHITECTURE.md 9b/9c).",
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
   "postCreateCommand": "bash .devcontainer/booster/boot-booster.sh up",
   "postStartCommand": "bash .devcontainer/booster/boot-booster.sh resume",

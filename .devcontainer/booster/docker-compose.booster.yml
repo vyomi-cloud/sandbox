@@ -41,5 +41,8 @@ services:
       VYOMI_BOOSTER_SESSION_TOKEN: ${VYOMI_BOOSTER_SESSION_TOKEN:-}
       VYOMI_BOOSTER_LOCAL_URL: http://simulator:9000
       WS_PKG: /app/relay/node_modules/ws
+      # Reserved Mesh target `host`/`codespace` = this Codespace's sshd (the devcontainer sshd feature listens on 2222).
+      VYOMI_HOST_SSH_ADDR: ${VYOMI_HOST_SSH_ADDR:-host.docker.internal:2222}
+    extra_hosts: ["host.docker.internal:host-gateway"]
 volumes:
   booster-data:
