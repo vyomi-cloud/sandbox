@@ -17,11 +17,11 @@ ttl_seconds() { local t="${1:-8h}" n="${1%[hmd]}" u="${1##*[0-9]}"; case "$u" in
 # session_end claim of the signed session token (payload is the 2nd dot-separated base64url part; verified by the simulator).
 token_end() {
   [ -n "${VYOMI_MESH_SESSION_TOKEN:-}" ] || return 0
-  python3 - "$VYOMI_MESH_SESSION_TOKEN" <<'PY' 2>/dev/null
-import base64, json, sys
-p = sys.argv[1].split(".")[1]
-print(int(json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))["session_end"]))
-PY
+  # Pure shell: the Codespace host (minimal Ubuntu) has no python3, so a python parse here silently returned nothing and the token's
+  # real session_end was ignored in favour of the 8 h cap.
+  local p; p=$(printf '%s' "$VYOMI_MESH_SESSION_TOKEN" | cut -d. -f2 | tr '_-' '/+')
+  while [ $(( ${#p} % 4 )) -ne 0 ]; do p="${p}="; done
+  printf '%s' "$p" | base64 -d 2>/dev/null | sed -n 's/.*"session_end": *\([0-9]*\).*/\1/p'
 }
 
 # session_end (epoch s): VYOMI_MESH_SESSION_END (from the portal's signed token) is capped at start+max; persisted so
@@ -78,7 +78,9 @@ start_ai() {
     || { log "AI pack: could not read the admission plan - not starting models."; return 0; }
   free=$(df -BG --output=avail "$HOME" 2>/dev/null | tail -1 | tr -dc 0-9)
   if [ -n "$free" ] && [ "$free" -lt "$AI_MIN_FREE_GB" ]; then log "AI pack: only ${free} GB free disk (< ${AI_MIN_FREE_GB}) - not pulling models."; return 0; fi
-  local vars; vars=$(printf '%s' "$plan" | python3 -c '
+  # Parse with the SIMULATOR's python: the Codespace host (minimal Ubuntu base) has no python3, which made this step always report
+  # "chat model not admitted" on a real Codespace. The simulator image always ships it.
+  local vars; vars=$(printf '%s' "$plan" | docker compose -f "$COMPOSE" exec -T simulator python3 -c '
 import json, sys
 p = json.load(sys.stdin)
 for k, e in (p.get("errors") or {}).items():
@@ -101,12 +103,24 @@ if m: print("export VYOMI_AI_EMBED_HF=%s VYOMI_AI_EMBED_CTX=%s" % (m["hf"], m["c
   disown 2>/dev/null || true
 }
 
+# A working Mesh = we hold the signed session token AND the simulator answers /mesh/status as a mesh (VYOMI_ROLE=mesh code present).
+mesh_verified() {
+  [ -n "${VYOMI_MESH_SESSION_TOKEN:-}" ] || return 1
+  docker compose -f "$COMPOSE" exec -T simulator curl -fsS -m 5 http://localhost:9000/mesh/status 2>/dev/null </dev/null | grep -Eq '"mesh": *true'
+}
+
 start_stack() {
   [ -f "$RUN_DIR/EXPIRED" ] && { log "session already expired — not starting."; return 1; }
   fetch_session || true
   docker compose -f "$COMPOSE" up -d simulator
   for _ in $(seq 1 60); do
     if docker compose -f "$COMPOSE" exec -T simulator curl -fsS -m 3 http://localhost:9000/healthz >/dev/null 2>&1; then
+      # /healthz is served by ANY appliance image (the 2026-11-10 :latest was a v3 build with no Mesh code and still passed it).
+      # Report ready only for a real Mesh: a session token in hand and the Mesh role answering /mesh/status.
+      if ! mesh_verified; then
+        log "ERROR: the simulator is up but is not a working Mesh (session token: ${VYOMI_MESH_SESSION_TOKEN:+present}${VYOMI_MESH_SESSION_TOKEN:-MISSING}; image: $(docker compose -f "$COMPOSE" images -q simulator 2>/dev/null | head -1)). NOT reporting ready."
+        return 1
+      fi
       post /api/mesh/session/ready "{\"codespace_id\":\"$CODESPACE\",\"status\":\"ready\",\"session_end\":$(resolve_end)}"
       start_ai
       log "mesh ready."; return 0

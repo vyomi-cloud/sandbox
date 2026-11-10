@@ -4,6 +4,8 @@ name: vyomi-mesh
 networks:
   vyomi-net:
     name: vyomi-net
+# The Mesh role (core/mesh_session.py, mesh_ai.py) exists only in v4 images. NEVER default to :latest: on 2026-11-10 it was a v3 build (3.0.46)
+# with no Mesh code, and every Mesh Codespace booted it. Pin the exact release tag at GA; override with VYOMI_SIMULATOR_IMAGE.
 services:
   simulator:
     image: ${VYOMI_SIMULATOR_IMAGE:-vyomi/appliance:v4-preview}
