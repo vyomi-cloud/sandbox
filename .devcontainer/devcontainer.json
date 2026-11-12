@@ -26,6 +26,6 @@
     "VYOMI_BILLING": "free_personal_quota"
   },
 
-  "//hostRequirements": "Default config: 2-core/8GB/32GB so any personal account can create a Codespace (the Mesh pack uses the same size).",
-  "hostRequirements": { "cpus": 2, "memory": "8gb", "storage": "32gb" }
+  "//hostRequirements": "Default config: 4-core/16GB/32GB (the Mesh pack has its own 2-core config).",
+  "hostRequirements": { "cpus": 4, "memory": "16gb", "storage": "32gb" }
 }
